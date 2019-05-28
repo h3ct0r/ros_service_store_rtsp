@@ -1,0 +1,8 @@
+bool is_to_store
+string stream_uri
+---
+bool success
+string filename
+string msg
+uint16 duration_secs
+uint16 wallclock_secs

@@ -1,0 +1,3 @@
+<launch>
+    <test test-name="test_stream" pkg="ros_service_store_rtsp" type="test_stream.py" />
+</launch>

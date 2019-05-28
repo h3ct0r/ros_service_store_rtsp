@@ -1,0 +1,13 @@
+<launch>
+    <arg name="group_name" default="store_video" />
+    <group ns="$(arg group_name)">
+        <node pkg="ros_service_store_rtsp" type="store_rtsp_service.py" name="store_rtsp_service" output="screen">
+            <param name="base_output_path" value="$(find ros_service_store_rtsp)/stored_streams" />
+            <param name="extension" value=".mkv" />
+            <param name="format" value="matroska" />
+            <param name="fps" value="15" />
+            <param name="video_bitrate" value="900k" />
+            <param name="publish_screenshots" value="true">/
+        </node>
+    </group>
+</launch>
