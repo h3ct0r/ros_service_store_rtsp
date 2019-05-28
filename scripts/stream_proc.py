@@ -119,7 +119,7 @@ class StreamProc:
         stream = ffmpeg.input(self.output_filepath, err_detect="ignore_err")
         stream = ffmpeg.output(stream, temp_file_path, c="copy")
         stream = ffmpeg.overwrite_output(stream)
-        ffmpeg.run(stream, pipe_stdout=True, pipe_stderr=True)
+        ffmpeg.run(stream, capture_stdout=True, capture_stderr=True)
 
         # after fixing the video on a random tempfile, delete the original video and
         # move the new one to the previous location

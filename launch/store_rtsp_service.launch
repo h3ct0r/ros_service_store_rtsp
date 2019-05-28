@@ -7,7 +7,7 @@
             <param name="format" value="matroska" />
             <param name="fps" value="15" />
             <param name="video_bitrate" value="900k" />
-            <param name="publish_screenshots" value="true">/
+            <param name="publish_screenshots" value="true"/>
         </node>
     </group>
 </launch>
