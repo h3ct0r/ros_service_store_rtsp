@@ -10,7 +10,7 @@ Install the dependencies (the easy way!):
 ```sh
 $ cd ~/catkin_ws/src
 $ git clone https://github.com/h3ct0r/ros_service_store_rtsp
-$ cd ~/catkin
+$ cd ~/catkin_ws
 $ echo "yaml file://$(readlink -f src/ros_service_store_rtsp/deps/custom_rosdep_rules.yaml)" | sudo tee -a /etc/ros/rosdep/sources.list.d/20-default.list
 $ rosdep update
 $ sudo rosdep install --from-paths src/ros_service_store_rtsp --ignore-src -r -y 
@@ -35,8 +35,18 @@ The service is called with a StoreRTSPRequest message type, that is basically a 
 
 ```python
 #!/usr/bin/env python
-from ros_service_store_rtsp.srv import StoreRTSPRequest, StoreRTSPResponse
-store_request = StoreRTSPRequest(True, "rtsp://stream.com/live/live.sdp")
+from ros_service_store_rtsp.srv import StoreRTSP
+
+def callStoreService(status, link):
+    rospy.wait_for_service('/store_rtsp')
+    try:
+        store_request = rospy.ServiceProxy('/store_rtsp', StoreRTSP)
+        print store_request(status, link)
+
+    except rospy.ServiceException, e:
+        print "Service call failed: %s"%e
+
+callStoreService(True, "rtsp://stream.com/live/live.sdp")
 ```
 
 ```sh
