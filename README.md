@@ -5,10 +5,14 @@ This is a Python ROS service to save RTSP stream to a file 'the easy way' withou
 
 Dillinger requires Ubuntu 16.04, `ffmpeg`, `numpy`, `ffmpeg-python` and `cv_bridge` to run.
 
-Install the dependencies:
+Install the dependencies (the easy way!):
 
 ```sh
-$ cd ~/catkin_ws
+$ cd ~/catkin_ws/src
+$ git clone https://github.com/h3ct0r/ros_service_store_rtsp
+$ cd ~/catkin
+$ echo "yaml file://$(readlink -f src/ros_service_store_rtsp/deps/custom_rosdep_rules.yaml)" | sudo tee -a /etc/ros/rosdep/sources.list.d/20-default.list
+$ rosdep update
 $ rosdep install --from-paths src/ros_service_store_rtsp --ignore-src -r -y 
 ```
 
