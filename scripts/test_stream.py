@@ -6,7 +6,6 @@ import sys
 import os
 import rospy
 import unittest
-from stream_proc import StreamProc
 from store_rtsp_service import StoreStreamService
 from ros_service_store_rtsp.srv import StoreRTSPRequest, StoreRTSPResponse
 import rospkg

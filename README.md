@@ -13,7 +13,7 @@ $ git clone https://github.com/h3ct0r/ros_service_store_rtsp
 $ cd ~/catkin
 $ echo "yaml file://$(readlink -f src/ros_service_store_rtsp/deps/custom_rosdep_rules.yaml)" | sudo tee -a /etc/ros/rosdep/sources.list.d/20-default.list
 $ rosdep update
-$ rosdep install --from-paths src/ros_service_store_rtsp --ignore-src -r -y 
+$ sudo rosdep install --from-paths src/ros_service_store_rtsp --ignore-src -r -y 
 ```
 
 ### How to run

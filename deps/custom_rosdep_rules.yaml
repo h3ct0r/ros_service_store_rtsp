@@ -1,8 +1,8 @@
 python-ffmpeg-pip:
   debian:
     pip:
-      packages: [python-ffmpeg]
+      packages: [ffmpeg-python==0.1.17]
   ubuntu:
     pip:
-      packages: [python-ffmpeg]
+      packages: [ffmpeg-python==0.1.17]
 
