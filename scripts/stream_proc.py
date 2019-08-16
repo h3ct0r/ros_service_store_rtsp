@@ -13,6 +13,7 @@ import fcntl
 import re
 import numpy as np
 import cv2
+import os
 
 
 class StreamProc:
@@ -22,8 +23,8 @@ class StreamProc:
     This setup has been tested with USB video and RTSP streams
     """
 
-    def __init__(self, stream_uri, output_filepath, frame_publisher, extension=".mkv", video_format="matroska", fps="15",
-                 video_bitrate="900k", stimeout=3000000):
+    def __init__(self, stream_uri, output_filepath, frame_publisher, extension=".mp4", acodec="copy",
+                 vcodec="copy", fps="15", video_bitrate="900k", stimeout=3000000):
         self.stream_uri = stream_uri
         self.output_filepath = output_filepath
         self.frame_publisher = frame_publisher
@@ -37,7 +38,8 @@ class StreamProc:
 
         self._def_timeout_secs = 4.0
         self._def_extension = extension
-        self._def_video_format = video_format
+        self._def_acodec = acodec
+        self._def_vcodec = vcodec
         self._def_fps = fps
         self._def_bitrate = video_bitrate
         self._def_stimeout = stimeout  # stimeout in microseconds
@@ -53,20 +55,18 @@ class StreamProc:
         # treat them differently, for example remove the socket TCP I/O timeout (stimeout)
         parsed_uri = urlparse(self.stream_uri)
         if parsed_uri.scheme == "rtsp":
-            stream = ffmpeg.input(self.stream_uri, stimeout=self._def_stimeout)  # stimeout in microseconds
-            stream = ffmpeg.filter(stream, 'fps', fps=self._def_fps, round='up')
-            stream = ffmpeg.output(stream, self.output_filepath, format=self._def_video_format,
-                                   video_bitrate=self._def_bitrate)
+            stream = ffmpeg.input(self.stream_uri, stimeout=self._def_stimeout, rtsp_transport='tcp')  # stimeout in microsecondss
+            stream = ffmpeg.output(stream, self.output_filepath, vcodec=self._def_acodec,
+                                   acodec=self._def_acodec, video_bitrate=self._def_bitrate)
             stream = ffmpeg.overwrite_output(stream)
         else:
             stream = ffmpeg.input(self.stream_uri)
-            stream = ffmpeg.output(stream, self.output_filepath, format=self._def_video_format,
-                                   video_bitrate=self._def_bitrate)
+            stream = ffmpeg.output(stream, self.output_filepath, vcodec=self._def_acodec,
+                                   acodec=self._def_acodec, video_bitrate=self._def_bitrate)
             stream = ffmpeg.overwrite_output(stream)
 
         test = ffmpeg.compile(stream)
-        print(test)
-        print(' '.join(test))
+        print("ffmpeg command: ", ' '.join(test))
 
         self.start_time = time.time()
         self.proc = (
@@ -115,7 +115,7 @@ class StreamProc:
         # using a simmilar approach to: https://video.stackexchange.com/questions/18220/fix-bad-files-and-streams-
         # with-ffmpeg-so-vlc-and-other-players-would-not-crash
         # original command: ffmpeg -err_detect ignore_err -i video.mkv -c copy video_fixed.mkv
-        _, temp_file_path = tempfile.mkstemp(suffix='.{}'.format(self._def_extension))
+        _, temp_file_path = tempfile.mkstemp(suffix='{}'.format(self._def_extension))
         stream = ffmpeg.input(self.output_filepath, err_detect="ignore_err")
         stream = ffmpeg.output(stream, temp_file_path, c="copy")
         stream = ffmpeg.overwrite_output(stream)
@@ -138,16 +138,30 @@ class StreamProc:
 
     def extract_metadata(self):
         """
-        Uses ffmpeg.probe to extract the metadata of the video at the self.output_filepath file
+        Uses probe_video to extract the metadata of the video at the self.output_filepath file
         :return:
         """
 
-        # extract video metadata
+        self.metadata = self.probe_video(self.output_filepath)
+        if self.metadata is None:
+            self.metadata = self.probe_video(self.stream_uri)
+        return self.metadata
+
+    def probe_video(self, filepath):
+        """
+        Uses ffmpeg.probe to extract the metadata of the video at the filepath file
+        :return:
+        """
+
+        meta = None
         try:
-            probe = ffmpeg.probe(self.output_filepath)
-            self.metadata = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
-        except:
-            pass
+            probe = ffmpeg.probe(filepath)
+            meta = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+        except Exception as e:
+            output = self._non_block_read(self.proc.stderr)
+            print("Exception probing video metadata from {}. error:{}. out:{}".format(filepath, e, output))
+
+        return meta
 
     def update_video_duration(self):
         """
@@ -215,17 +229,26 @@ class StreamProc:
         width = int(self.metadata['width'])
         height = int(self.metadata['height'])
 
-        last_frame_idx = self.last_frame_number - frame_offset
-        if last_frame_idx < 0:
-            last_frame_idx = 0
+        parsed_uri = urlparse(self.stream_uri)
+        if parsed_uri.scheme == "rtsp":
+            out, _ = (
+                ffmpeg
+                    .input(self.stream_uri)
+                    .output('pipe:', vframes=1, format='rawvideo', pix_fmt='rgb24')
+                    .run(capture_stdout=True, capture_stderr=True)
+            )
+        else:
+            last_frame_idx = self.last_frame_number - frame_offset
+            if last_frame_idx < 0:
+                last_frame_idx = 0
 
-        out, _ = (
-            ffmpeg
-                .input(self.output_filepath)
-                .filter('select', 'gte(n,{})'.format(last_frame_idx))
-                .output('pipe:', vframes=1, format='rawvideo', pix_fmt='rgb24')
-                .run(capture_stdout=True, capture_stderr=True)
-        )
+            out, _ = (
+                ffmpeg
+                    .input(self.output_filepath)
+                    .filter('select', 'gte(n,{})'.format(last_frame_idx))
+                    .output('pipe:', vframes=1, format='rawvideo', pix_fmt='rgb24')
+                    .run(capture_stdout=True, capture_stderr=True)
+            )
 
         video_stream = (
             np.frombuffer(out, np.uint8).reshape([-1, height, width, 3])

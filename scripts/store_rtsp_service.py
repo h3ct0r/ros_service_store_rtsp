@@ -18,13 +18,14 @@ class StoreStreamService:
     Service to manage the start/stop of the streaming recorders
     """
 
-    def __init__(self, base_output_path='/tmp', extension='.mkv', video_bitrate='900k', video_format="matroska",
-                 fps=15):
+    def __init__(self, base_output_path='/tmp', extension='.mp4', video_bitrate='900k', acodec="copy",
+                 vcodec="copy", fps=15):
         self.base_output_path = base_output_path
         self.extension = extension
         self.video_bitrate = video_bitrate
         self.fps = fps
-        self.video_format = video_format
+        self.acodec = acodec
+        self.vcodec = vcodec
         self.process_dict = {}
 
     def get_output_filename(self, stream_uri):
@@ -62,8 +63,8 @@ class StoreStreamService:
         :param uri:
         :return:
         """
-        pattern = re.compile('[\W_]+', re.UNICODE)
-        return pattern.sub('_', uri)
+        pattern = re.compile('[\W_:]+', re.UNICODE)
+        return pattern.sub('', uri)
 
     def store_response_callback(self, request):
         """
@@ -122,13 +123,19 @@ class StoreStreamService:
                     published_uri = parsed_uri.hostname
                     if parsed_uri.port != '':
                         published_uri += ':{}'.format(parsed_uri.port)
+
+                    published_uri = self.sanitize_uri(published_uri)
                 else:
                     published_uri = self.sanitize_uri(os.path.basename(request.stream_uri))
+
+                published_uri = "stream_" + published_uri
 
                 rospy.loginfo("Publishing images at topic: %s", published_uri)
                 frame_publisher = rospy.Publisher(published_uri, Image, queue_size=10)
 
-                stream_proc = StreamProc(request.stream_uri, output_filepath, frame_publisher)
+                stream_proc = StreamProc(request.stream_uri, output_filepath, frame_publisher, extension=self.extension,
+                                         acodec=self.acodec, vcodec=self.vcodec, fps=self.fps,
+                                         video_bitrate=self.video_bitrate)
                 is_recording = stream_proc.start_recording()
 
                 if is_recording:
@@ -155,11 +162,18 @@ class StoreStreamService:
         :return:
         """
 
+        print("aaaa")
+
         for k in self.process_dict.keys():
             p = self.process_dict[k]
+
+            print(111)
             p.extract_fps_from_stream()
+            print(222)
 
             last_frame = p.extract_last_frame_from_stream()
+            print(333, last_frame)
+
             if last_frame is not None:
                 try:
                     msg_frame = CvBridge().cv2_to_imgmsg(last_frame)
@@ -167,6 +181,8 @@ class StoreStreamService:
                     frame_pub.publish(msg_frame)
                 except CvBridgeError as e:
                     rospy.logerr("Error converting frame to ROS format: %s %s", p.get_stream_uri(), e)
+            else:
+                rospy.logerr("Error last frame of stream %s is None", p.get_stream_uri())
 
     def stop_all_recordings(self):
         """
@@ -187,20 +203,25 @@ if __name__ == "__main__":
     arg_extension = rospy.get_param('~extension', '.mkv')
     arg_video_bitrate = rospy.get_param('~video_bitrate', '900k')
     arg_fps = rospy.get_param('~fps', 15)
-    arg_format = rospy.get_param('~format', 'matroska')
+    arg_acodec= rospy.get_param('~acodec', 'copy')
+    arg_vcodec = rospy.get_param('~vcodec', 'copy')
     arg_publish_screenshots = rospy.get_param('~publish_screenshots', True)
+    arg_publish_screenshots_rate = rospy.get_param('~publish_screenshots_rate', 1)
 
     store_service = StoreStreamService(
         base_output_path=arg_base_output_path,
         extension=arg_extension,
         video_bitrate=arg_video_bitrate,
         fps=arg_fps,
-        video_format=arg_format
+        acodec=arg_acodec,
+        vcodec=arg_vcodec
     )
 
     rospy.Service('/store_rtsp', StoreRTSP, store_service.store_response_callback)
 
-    r = rospy.Rate(0.05)
+    print("Publising image topics:{} at freq:{}".format(arg_publish_screenshots, arg_publish_screenshots_rate))
+
+    r = rospy.Rate(arg_publish_screenshots_rate)
     while not rospy.is_shutdown():
         if arg_publish_screenshots:
             # at the specified interval extract an actual frame
