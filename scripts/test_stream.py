@@ -19,8 +19,8 @@ class TestStoreStreamService(unittest.TestCase):
 
         paths = []
         for i in xrange(5):
-            path = store_service.get_output_filename("video.mkv")
-            open(path, 'w').close()
+            path, video_idx = store_service.get_output_filename("video.mp4")
+            open(path, 'w').close()  # create_file in that folder
             paths.append(path)
 
         for p in paths:
@@ -36,14 +36,14 @@ class TestStoreStreamService(unittest.TestCase):
 
         rospack = rospkg.RosPack()
         pkg_path = rospack.get_path('ros_service_store_rtsp')
-        store_request = StoreRTSPRequest(True, os.path.join(pkg_path, 'tests', 'SampleVideo_360x240_1mb.mkv'))
+        store_request = StoreRTSPRequest(True, "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov")
         store_service.store_response_callback(store_request)
 
         self.assertEquals(len(store_service.process_dict.keys()), 1)
 
         key = store_service.process_dict.keys()[0]
         proc = store_service.process_dict[key]
-        output_filepath = proc.get_output_filepath()
+        output_filepath = proc.get_last_segment_output_filepath()
 
         self.assertTrue(os.path.isfile(output_filepath))
 
