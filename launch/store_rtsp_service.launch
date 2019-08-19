@@ -3,13 +3,16 @@
     <group ns="$(arg group_name)">
         <node pkg="ros_service_store_rtsp" type="store_rtsp_service.py" name="store_rtsp_service" output="screen">
             <param name="base_output_path" value="$(find ros_service_store_rtsp)/stored_streams" />
-            <param name="extension" value=".mp4" />
-            <param name="acodec" value="copy" />
+            <!--<param name="base_output_path" value="/tmp/stored_streams" />-->
+            <param name="extension" value=".mkv" />
+            <param name="acodec" value="" /> <!-- leave empty or do not set this param to disable audio -->
             <param name="vcodec" value="copy" />
             <param name="fps" value="15" />
             <param name="video_bitrate" value="900k" />
             <param name="publish_screenshots" value="true"/>
-            <param name="publish_screenshots_rate" value="1"/>
+            <param name="publish_screenshots_rate_seconds" value="2"/> <!-- cannot be less than 1, value in seconds -->
+            <param name="segment_time" value="300"/>
+            <param name="segment_format" value="matroska"/>
         </node>
     </group>
 </launch>
